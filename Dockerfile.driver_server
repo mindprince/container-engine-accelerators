@@ -1,0 +1,9 @@
+FROM golang:1.10-alpine as builder
+WORKDIR /go/src/github.com/GoogleCloudPlatform/container-engine-accelerators/
+COPY . .
+RUN go build cmd/driver_server/driver_server.go
+RUN chmod a+x /go/src/github.com/GoogleCloudPlatform/container-engine-accelerators/driver_server
+
+FROM alpine
+COPY --from=builder /go/src/github.com/GoogleCloudPlatform/container-engine-accelerators/driver_server /usr/bin/nvidia-driver-server
+CMD ["/usr/bin/nvidia-driver-server"]

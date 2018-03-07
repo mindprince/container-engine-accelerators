@@ -36,15 +36,30 @@ presubmit: vet
 
 TAG?=$(shell git rev-parse HEAD)
 REGISTRY?=gcr.io/google-containers
-IMAGE=nvidia-gpu-device-plugin
+IMAGE_PLUGIN=nvidia-gpu-device-plugin
+IMAGE_DRIVER=nvidia-driver-server
+IMAGE_DOWNLOADER=nvidia-driver-downloader
 
 build:
-	cd cmd/nvidia_gpu; go build nvidia_gpu.go
+	go build cmd/nvidia_gpu/nvidia_gpu.go
+	go build cmd/driver_server/driver_server.go
 
-container:
-	docker build --pull -t ${REGISTRY}/${IMAGE}:${TAG} .
+container-plugin:
+	docker build --pull -t ${REGISTRY}/${IMAGE_PLUGIN}:${TAG} .
 
-push:
-	gcloud docker -- push ${REGISTRY}/${IMAGE}:${TAG}
+push-plugin:
+	gcloud docker -- push ${REGISTRY}/${IMAGE_PLUGIN}:${TAG}
 
-.PHONY: all format test vet presubmit build container push
+container-driver:
+	docker build --pull -f Dockerfile.driver_server -t ${REGISTRY}/${IMAGE_DRIVER}:${TAG} .
+
+push-driver:
+	gcloud docker -- push ${REGISTRY}/${IMAGE_DRIVER}:${TAG}
+
+container-downloader:
+	docker build --pull -f Dockerfile.downloader -t ${REGISTRY}/${IMAGE_DOWNLOADER}:${TAG} .
+
+push-downloader:
+	gcloud docker -- push ${REGISTRY}/${IMAGE_DOWNLOADER}:${TAG}
+
+.PHONY: all format test vet presubmit build container-plugin push-plugin container-driver push-driver container-downloader push-downloader

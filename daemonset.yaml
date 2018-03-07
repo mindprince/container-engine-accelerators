@@ -37,7 +37,6 @@ spec:
       - key: "nvidia.com/gpu"
         effect: "NoSchedule"
         operator: "Exists"
-      hostNetwork: true
       hostPID: true
       volumes:
       - name: dev
@@ -50,6 +49,16 @@ spec:
         hostPath:
           path: /
       initContainers:
+      - image: gcr.io/agarwalrohit-sandbox/nvidia-driver-downloader:0c9a43fa8ab044677cfe1e3b23d3dc5a142406f5
+        name: download-the-driver
+        securityContext:
+          privileged: true
+        workingDir: /usr/local
+        volumeMounts:
+        - name: nvidia-install-dir-host
+          mountPath: /usr/local/nvidia
+        - name: root-mount
+          mountPath: /root
       - image: gcr.io/cos-cloud/cos-gpu-installer@sha256:96cbb3424df71cb1c5ef072c18d6abbf037e328dde8a0014c2c3af8b6c59c132
         name: nvidia-driver-installer
         resources:
@@ -71,6 +80,33 @@ spec:
           mountPath: /dev
         - name: root-mount
           mountPath: /root
+      - image: gcr.io/google_containers/busybox:1.27
+        name: tar-the-driver
+        securityContext:
+          privileged: true
+        command: ["tar"]
+        args: ["-czvf", "nvidia/nvidia.tgz", "nvidia/.cache", "nvidia/bin", "nvidia/drivers", "nvidia/lib64", "nvidia/share"]
+        workingDir: /usr/local
+        volumeMounts:
+        - name: nvidia-install-dir-host
+          mountPath: /usr/local/nvidia
       containers:
-      - image: "gcr.io/google-containers/pause:2.0"
-        name: pause
+      - image: "gcr.io/agarwalrohit-sandbox/nvidia-driver-server:0c9a43fa8ab044677cfe1e3b23d3dc5a142406f5"
+        name: driver-server
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: nvidia-install-dir-host
+          mountPath: /usr/local/nvidia
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: driver-download-service
+spec:
+  selector:
+    name: nvidia-driver-installer
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
